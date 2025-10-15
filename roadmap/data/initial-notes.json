@@ -9,6 +9,9 @@
           "status": "orange",
           "priority": "high",
           "checked": false,
+          "responsible": "Anna Kowalska",
+          "dueDate": "2025-10-15",
+          "estimatedCost": 12000,
           "createdAt": "2025-08-01T10:00:00.000Z",
           "updatedAt": "2025-08-15T09:30:00.000Z"
         }
@@ -24,6 +27,9 @@
           "status": "green",
           "priority": "medium",
           "checked": true,
+          "responsible": "Michał Nowak",
+          "dueDate": "2025-11-05",
+          "estimatedCost": 6500,
           "createdAt": "2025-08-10T12:00:00.000Z",
           "updatedAt": "2025-09-01T08:15:00.000Z"
         }
@@ -62,6 +68,10 @@
       "description": "System antykorozyjny do konstrukcji offshore – modułowy zestaw powłok zabezpieczających o krótkim czasie aplikacji.",
       "link": "https://metcor.pl/produkty/shield-300",
       "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMTI4IDEyOCI+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIGZpbGw9IiMyQTJGMzYiLz48cGF0aCBkPSJNMjAgOTJMNTYgMzZsMjIgMjggMTAtMTYgMjAgNDRIMjB6IiBmaWxsPSIjRDgyQzJDIi8+PGNpcmNsZSBjeD0iNDQiIGN5PSI0NCIgcj0iMTIiIGZpbGw9IiNGN0Y3RjgiIG9wYWNpdHk9IjAuODUiLz48L3N2Zz4=",
+      "category": "Powłoki",
+      "release": "released",
+      "owner": "Zespół Produktu",
+      "tags": ["Offshore", "OEM"],
       "createdAt": "2025-07-12T09:15:00.000Z",
       "updatedAt": "2025-08-02T14:05:00.000Z"
     },
@@ -71,6 +81,10 @@
       "description": "Pakiet do optymalizacji przepływu materiałów w zakładach ciężkich wraz z dashboardem KPI.",
       "link": "https://metcor.pl/produkty/flow-nx",
       "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMTI4IDEyOCI+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIGZpbGw9IiMxRjIzMjgiLz48cmVjdCB4PSIyMCIgeT0iMjgiIHdpZHRoPSI4OCIgaGVpZ2h0PSI3MiIgcng9IjEyIiBmaWxsPSIjMkEyRjM2Ii8+PHBhdGggZD0iTTI4IDg4aDcyIiBzdHJva2U9IiNEODJDMkMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGNpcmNsZSBjeD0iNDgiIGN5PSI1NiIgcj0iMTQiIGZpbGw9IiNGN0Y3RjgiLz48cGF0aCBkPSJNNDggNDhsOCAxMmgtMTZ6IiBmaWxsPSIjRDgyQzJDIi8+PC9zdmc+",
+      "category": "Automatyzacja",
+      "release": "beta",
+      "owner": "Growth Lab",
+      "tags": ["Przemysł ciężki", "Logistyka"],
       "createdAt": "2025-07-28T10:40:00.000Z",
       "updatedAt": "2025-08-10T08:55:00.000Z"
     }
@@ -84,6 +98,9 @@
       "goal": "Analiza wzmiankowanych fraz o Metcor i automatyczne przygotowanie streszczeń dla zespołu PR.",
       "status": "active",
       "notes": "Synchronizacja z kontem firmowym oraz pulsem branżowym. Publikacja wątku raportowego raz w tygodniu.",
+      "owner": "Growth Team",
+      "assignedMonth": "2025-10",
+      "nextAction": "2025-09-30",
       "createdAt": "2025-07-15T07:30:00.000Z",
       "updatedAt": "2025-08-12T06:10:00.000Z"
     },
@@ -95,6 +112,9 @@
       "goal": "Generowanie rekomendacji kampanii retargetingowych na bazie danych z katalogu produktów.",
       "status": "training",
       "notes": "Model w trakcie tuningu – wymaga dodatkowych case studies ze stoczni offshore.",
+      "owner": "Marketing Automation",
+      "assignedMonth": "2025-12",
+      "nextAction": "2025-10-15",
       "createdAt": "2025-08-01T08:45:00.000Z",
       "updatedAt": "2025-08-14T09:20:00.000Z"
     }
