@@ -50,6 +50,61 @@
             <li><span class="legend-dot legend-dot--red" aria-hidden="true"></span>Niezrealizowane</li>
           </ul>
         </header>
+        <section class="kpi-cockpit" aria-labelledby="kpi-heading">
+          <header class="kpi-header">
+            <div>
+              <h3 id="kpi-heading">Kokpit KPI planu</h3>
+              <p>Zobacz kondycję roadmapy zanim wejdziesz w szczegóły miesiąca – sumy zadań, ukończenie i pliki.</p>
+            </div>
+            <button type="button" class="btn btn-secondary" data-action="refresh-kpi" aria-label="Odśwież wskaźniki">
+              Odśwież
+            </button>
+          </header>
+          <div class="kpi-grid" role="list" aria-label="Łączne wskaźniki planu">
+            <article class="kpi-card" role="listitem">
+              <h4>Łącznie zadań</h4>
+              <p id="kpi-total-notes">0</p>
+              <span id="kpi-total-cost">Budżet: 0&nbsp;zł</span>
+            </article>
+            <article class="kpi-card" role="listitem">
+              <h4>Wykonanie planu</h4>
+              <p id="kpi-overall-progress">0%</p>
+              <span id="kpi-completed-notes">0 ukończonych</span>
+            </article>
+            <article class="kpi-card" role="listitem">
+              <h4>Repozytorium plików</h4>
+              <p id="kpi-total-files">0</p>
+              <span id="kpi-file-coverage">0 miesięcy z plikami</span>
+            </article>
+            <article class="kpi-card" role="listitem">
+              <h4>Najbliższy termin</h4>
+              <p id="kpi-next-deadline">—</p>
+              <span id="kpi-next-deadline-owner">Brak przypisania</span>
+            </article>
+          </div>
+          <div class="kpi-detail">
+            <section class="kpi-trend" aria-labelledby="kpi-trend-heading">
+              <h4 id="kpi-trend-heading">Trend miesiąc do miesiąca</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Miesiąc</th>
+                    <th scope="col">Zadania</th>
+                    <th scope="col">Ukończone</th>
+                    <th scope="col">Postęp</th>
+                    <th scope="col">Pliki</th>
+                  </tr>
+                </thead>
+                <tbody id="kpi-trend-body"></tbody>
+              </table>
+            </section>
+            <section class="kpi-upcoming" aria-labelledby="kpi-upcoming-heading">
+              <h4 id="kpi-upcoming-heading">Nadchodzące terminy</h4>
+              <ul id="kpi-upcoming-deadlines" class="kpi-upcoming__list"></ul>
+              <p id="kpi-upcoming-empty" class="kpi-upcoming__empty" role="status">Brak zaplanowanych terminów.</p>
+            </section>
+          </div>
+        </section>
         <nav class="timeline" aria-label="Oś czasu planu marketingowego">
           <ol class="timeline-list" id="timeline-list"></ol>
         </nav>
@@ -111,6 +166,20 @@
               <span>Treść</span>
               <textarea name="content" rows="4"></textarea>
             </label>
+            <div class="form-grid">
+              <label class="form-field">
+                <span>Odpowiedzialny</span>
+                <input type="text" name="responsible" placeholder="np. Anna Kowalska" />
+              </label>
+              <label class="form-field">
+                <span>Termin realizacji</span>
+                <input type="date" name="dueDate" />
+              </label>
+              <label class="form-field">
+                <span>Koszt szacowany (PLN)</span>
+                <input type="number" name="estimatedCost" min="0" step="0.01" inputmode="decimal" />
+              </label>
+            </div>
             <label class="form-field">
               <span>Priorytet</span>
               <select name="priority">
@@ -156,6 +225,12 @@
               <option value="title-desc">Tytuł Z-A</option>
               <option value="status-asc">Status A-Z</option>
               <option value="status-desc">Status Z-A</option>
+              <option value="dueDate-asc">Termin rosnąco</option>
+              <option value="dueDate-desc">Termin malejąco</option>
+              <option value="responsible-asc">Odpowiedzialny A-Z</option>
+              <option value="responsible-desc">Odpowiedzialny Z-A</option>
+              <option value="estimatedCost-desc">Koszt malejąco</option>
+              <option value="estimatedCost-asc">Koszt rosnąco</option>
             </select>
           </div>
           <ul class="note-list" id="note-list" aria-live="polite"></ul>
@@ -207,6 +282,29 @@
           <button type="reset" class="btn btn-secondary">Wyczyść</button>
         </div>
       </form>
+      <div class="clients-toolbar" role="group" aria-label="Filtry klientów">
+        <label class="toolbar-field">
+          <span class="sr-only">Szukaj klienta</span>
+          <input type="search" id="clients-search" placeholder="Szukaj klienta, branży lub notatki" />
+        </label>
+        <select id="clients-filter-status" aria-label="Filtruj po statusie">
+          <option value="all">Status: wszyscy</option>
+          <option value="active">Aktywni</option>
+          <option value="prospect">Prospekci</option>
+          <option value="on-hold">Wstrzymani</option>
+        </select>
+        <select id="clients-filter-owner" aria-label="Filtruj po opiekunie">
+          <option value="all">Opiekun: wszyscy</option>
+        </select>
+        <select id="clients-sort" aria-label="Sortuj klientów">
+          <option value="updatedAt-desc">Najnowsze aktualizacje</option>
+          <option value="name-asc">Nazwa A-Z</option>
+          <option value="name-desc">Nazwa Z-A</option>
+          <option value="status-asc">Status A-Z</option>
+          <option value="owner-asc">Opiekun A-Z</option>
+        </select>
+      </div>
+      <div class="clients-segments" id="clients-segments" aria-live="polite"></div>
       <div class="clients-table-wrapper" role="region" aria-live="polite" aria-labelledby="clients-title">
         <table class="clients-table">
           <thead>
@@ -248,15 +346,61 @@
           <input id="product-link" name="link" type="url" placeholder="https://metcor.pl/produkt" />
         </div>
         <div class="form-field">
+          <label for="product-category">Kategoria</label>
+          <input id="product-category" name="category" type="text" placeholder="np. Powłoki, Automatyzacja" />
+        </div>
+        <div class="form-field">
+          <label for="product-release">Status wersji</label>
+          <select id="product-release" name="release">
+            <option value="released">W produkcji</option>
+            <option value="beta">Beta / pilotaż</option>
+            <option value="roadmap">W przygotowaniu</option>
+            <option value="retired">Wycofany</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="product-owner">Właściciel produktu</label>
+          <input id="product-owner" name="owner" type="text" placeholder="np. Zespół R&amp;D" />
+        </div>
+        <div class="form-field">
           <label for="product-image">Zdjęcie produktu</label>
           <input id="product-image" name="image" type="file" accept="image/*" aria-describedby="product-image-hint" />
           <p class="field-hint" id="product-image-hint">Najlepiej sprawdzają się kwadratowe grafiki do 5&nbsp;MB.</p>
+        </div>
+        <div class="form-field form-field--wide">
+          <label for="product-tags">Tagi / branże docelowe</label>
+          <input id="product-tags" name="tags" type="text" placeholder="np. Offshore, OEM, Energetyka" />
         </div>
         <div class="form-actions form-actions--product">
           <button type="submit" class="btn btn-primary">Dodaj produkt</button>
           <button type="reset" class="btn btn-secondary">Wyczyść</button>
         </div>
       </form>
+      <div class="products-toolbar" role="group" aria-label="Filtry produktów">
+        <label class="toolbar-field">
+          <span class="sr-only">Szukaj produktu</span>
+          <input type="search" id="products-search" placeholder="Szukaj nazwy, kategorii lub tagu" />
+        </label>
+        <select id="products-filter-category" aria-label="Filtruj po kategorii">
+          <option value="all">Kategoria: wszystkie</option>
+        </select>
+        <select id="products-filter-release" aria-label="Filtruj po statusie wersji">
+          <option value="all">Status: wszystkie</option>
+          <option value="released">W produkcji</option>
+          <option value="beta">Beta / pilotaż</option>
+          <option value="roadmap">W przygotowaniu</option>
+          <option value="retired">Wycofany</option>
+        </select>
+        <select id="products-filter-owner" aria-label="Filtruj po właścicielu">
+          <option value="all">Właściciel: wszyscy</option>
+        </select>
+        <select id="products-sort" aria-label="Sortuj produkty">
+          <option value="updatedAt-desc">Ostatnio aktualizowane</option>
+          <option value="name-asc">Nazwa A-Z</option>
+          <option value="name-desc">Nazwa Z-A</option>
+          <option value="category-asc">Kategoria A-Z</option>
+        </select>
+      </div>
       <div class="products-list-wrapper" role="region" aria-live="polite" aria-labelledby="products-title">
         <ul id="products-list" class="products-list"></ul>
         <p id="products-empty" class="products-empty" role="status">Brak produktów w katalogu. Dodaj pozycję, aby rozpocząć.</p>
@@ -302,11 +446,25 @@
               <input id="ai-cadence" name="cadence" type="text" placeholder="np. codziennie, 2× tydzień" />
             </div>
             <div class="form-field">
+              <label for="ai-owner">Odpowiedzialny zespół</label>
+              <input id="ai-owner" name="owner" type="text" placeholder="np. Growth Team" />
+            </div>
+            <div class="form-field">
               <label for="ai-status">Status</label>
               <select id="ai-status" name="status">
                 <option value="active">Aktywny</option>
                 <option value="training">Szkolenie</option>
                 <option value="paused">Wstrzymany</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="ai-next-action">Najbliższe działanie</label>
+              <input id="ai-next-action" name="nextAction" type="date" />
+            </div>
+            <div class="form-field">
+              <label for="ai-month">Przypisz do miesiąca roadmapy</label>
+              <select id="ai-month" name="assignedMonth">
+                <option value="">Brak przypisania</option>
               </select>
             </div>
             <div class="form-field">
@@ -327,6 +485,11 @@
             <p id="ai-empty" class="ai-empty" role="status">Brak botów na liście. Dodaj pierwszego operatora, by rozpocząć.</p>
           </div>
         </div>
+        <section class="ai-schedule" aria-labelledby="ai-schedule-heading">
+          <h3 id="ai-schedule-heading">Harmonogram działań botów</h3>
+          <ul id="ai-schedule-list" class="ai-schedule__list"></ul>
+          <p id="ai-schedule-empty" class="ai-schedule__empty" role="status">Brak zaplanowanych działań botów.</p>
+        </section>
       </div>
       <div class="ai-floating-actions">
         <button type="button" class="btn btn-primary btn-floating" data-action="ai-focus-form">Dodaj bota</button>
@@ -350,6 +513,16 @@
     <footer class="app-footer" role="contentinfo">
       <p>© Metcor, 2025–2026</p>
     </footer>
+    <section class="history-log" aria-labelledby="history-heading">
+      <header class="history-header">
+        <div>
+          <h2 id="history-heading">Historia zmian i audyt</h2>
+          <p>Rejestr ostatnich modyfikacji w roadmapie, panelu klientów, katalogu i module AI.</p>
+        </div>
+      </header>
+      <ul id="history-list" class="history-list" aria-live="polite"></ul>
+      <p id="history-empty" class="history-empty" role="status">Brak jeszcze zarejestrowanych zmian.</p>
+    </section>
   </div>
 
   <input type="file" id="file-input" class="sr-only" multiple />

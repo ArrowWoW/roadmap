@@ -42,7 +42,46 @@
   const aiMetricTraining = document.getElementById('ai-metric-training');
   const aiMetricQueued = document.getElementById('ai-metric-queued');
   const aiFloatingActions = document.querySelector('.ai-floating-actions');
+  const aiMonthSelect = document.getElementById('ai-month');
+  const aiScheduleList = document.getElementById('ai-schedule-list');
+  const aiScheduleEmpty = document.getElementById('ai-schedule-empty');
+  const kpiRefreshButton = document.querySelector('[data-action="refresh-kpi"]');
+  const kpiTotalNotes = document.getElementById('kpi-total-notes');
+  const kpiTotalCost = document.getElementById('kpi-total-cost');
+  const kpiOverallProgress = document.getElementById('kpi-overall-progress');
+  const kpiCompletedNotes = document.getElementById('kpi-completed-notes');
+  const kpiTotalFiles = document.getElementById('kpi-total-files');
+  const kpiFileCoverage = document.getElementById('kpi-file-coverage');
+  const kpiNextDeadline = document.getElementById('kpi-next-deadline');
+  const kpiNextDeadlineOwner = document.getElementById('kpi-next-deadline-owner');
+  const kpiTrendBody = document.getElementById('kpi-trend-body');
+  const kpiUpcomingList = document.getElementById('kpi-upcoming-deadlines');
+  const kpiUpcomingEmpty = document.getElementById('kpi-upcoming-empty');
+  const clientsSearch = document.getElementById('clients-search');
+  const clientsFilterStatus = document.getElementById('clients-filter-status');
+  const clientsFilterOwner = document.getElementById('clients-filter-owner');
+  const clientsSort = document.getElementById('clients-sort');
+  const clientsSegments = document.getElementById('clients-segments');
+  const productsSearch = document.getElementById('products-search');
+  const productsFilterCategory = document.getElementById('products-filter-category');
+  const productsFilterRelease = document.getElementById('products-filter-release');
+  const productsFilterOwner = document.getElementById('products-filter-owner');
+  const productsSort = document.getElementById('products-sort');
+  const historyList = document.getElementById('history-list');
+  const historyEmpty = document.getElementById('history-empty');
   const defaultPanelSubtitle = panelSubtitle ? panelSubtitle.textContent : '';
+  const clientsEmptyDefault = clientsEmpty ? clientsEmpty.textContent : '';
+  const productsEmptyDefault = productsEmpty ? productsEmpty.textContent : '';
+  const aiEmptyDefault = aiEmpty ? aiEmpty.textContent : '';
+  const historyEmptyDefault = historyEmpty ? historyEmpty.textContent : '';
+  const kpiUpcomingEmptyDefault = kpiUpcomingEmpty ? kpiUpcomingEmpty.textContent : '';
+  const currencyFormatter = new Intl.NumberFormat('pl-PL', {
+    style: 'currency',
+    currency: 'PLN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+  const shortDateFormatter = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'medium' });
 
   let appState = null;
   let activeMonth = null;
@@ -56,6 +95,7 @@
   let aiPanelOpen = false;
   const openProductIds = new Set();
   const MAX_PRODUCT_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB limit for product thumbnails
+  const HISTORY_LIMIT = 200;
 
   if (newNoteButton) {
     newNoteButton.setAttribute('aria-expanded', 'false');
@@ -88,7 +128,9 @@
     renderTimeline();
     renderClientsList();
     renderProductsList();
+    populateAiMonthOptions();
     renderAiBotsList();
+    renderHistory();
     bindEvents();
     applyTheme(appState.ui.theme || 'light');
     setMenuActive('timeline');
@@ -96,6 +138,7 @@
     if (appState.ui.lastOpenedMonth) {
       openMonth(appState.ui.lastOpenedMonth);
     }
+    renderGlobalKpi();
   }
 
   function generateMonthRange(start, end) {
@@ -132,14 +175,14 @@
       clients: [],
       products: [],
       aiBots: [],
+      history: Array.isArray(source.history)
+        ? source.history.map(normalizeHistoryEntry).filter(Boolean)
+        : [],
     };
     for (const month of monthRange) {
       const monthData = monthSeed[month] || { notes: [], files: [] };
       state.months[month] = {
-        notes: (monthData.notes || []).map((note) => ({
-          ...note,
-          checked: Boolean(note.checked),
-        })),
+        notes: (monthData.notes || []).map(normalizeNote).filter(Boolean),
         files: (monthData.files || []).map((file) => ({ ...file, data: null })),
       };
     }
@@ -157,10 +200,7 @@
           state.months[month] = { notes: [], files: [] };
         }
         const monthData = stored.months[month];
-        state.months[month].notes = (monthData.notes || []).map((note) => ({
-          ...note,
-          checked: Boolean(note.checked),
-        }));
+        state.months[month].notes = (monthData.notes || []).map(normalizeNote).filter(Boolean);
         state.months[month].files = (monthData.files || []).map((file) => ({ ...file, data: null }));
       }
     }
@@ -175,6 +215,9 @@
     }
     if (stored && Array.isArray(stored.aiBots)) {
       state.aiBots = stored.aiBots.map(normalizeAiBot).filter(Boolean);
+    }
+    if (stored && Array.isArray(stored.history)) {
+      state.history = stored.history.map(normalizeHistoryEntry).filter(Boolean);
     }
     return state;
   }
@@ -310,6 +353,12 @@
     if (aiFloatingActions) {
       aiFloatingActions.addEventListener('click', handleAiFloatingActions);
     }
+    if (kpiRefreshButton) {
+      kpiRefreshButton.addEventListener('click', () => {
+        renderGlobalKpi();
+        createToast('Odświeżono wskaźniki kokpitu', 'success');
+      });
+    }
     document.addEventListener('keydown', handleShortcuts);
     modal.addEventListener('click', handleModalClick);
     themeToggleBtn.addEventListener('click', toggleTheme);
@@ -358,12 +407,28 @@
       li.appendChild(btn);
       monthsList.appendChild(li);
     });
+    renderGlobalKpi();
   }
 
   function formatMonthLabel(key) {
     const [year, month] = key.split('-').map(Number);
     const formatter = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric' });
     return formatter.format(new Date(year, month - 1, 1)).replace(/^(.)/, (m) => m.toUpperCase());
+  }
+
+  function populateAiMonthOptions() {
+    if (!aiMonthSelect) return;
+    const current = aiMonthSelect.value;
+    aiMonthSelect.innerHTML = '<option value="">Brak przypisania</option>';
+    monthRange.forEach((monthKey) => {
+      const option = document.createElement('option');
+      option.value = monthKey;
+      option.textContent = formatMonthLabel(monthKey);
+      aiMonthSelect.appendChild(option);
+    });
+    if (current && monthRange.includes(current)) {
+      aiMonthSelect.value = current;
+    }
   }
 
   function calculateProgress(notes) {
@@ -390,17 +455,227 @@
     return `Zadania: ${total} | Wykonane: ${done} | Niewykonane: ${pending}`;
   }
 
+  function renderGlobalKpi() {
+    if (!kpiTotalNotes || !appState || !appState.months) return;
+    let totalNotes = 0;
+    let totalCompleted = 0;
+    let totalFiles = 0;
+    let totalCost = 0;
+    let monthsWithFiles = 0;
+    const trend = [];
+    const upcoming = [];
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    monthRange.forEach((monthKey) => {
+      const monthData = appState.months[monthKey] || { notes: [], files: [] };
+      const notes = Array.isArray(monthData.notes) ? monthData.notes : [];
+      const files = Array.isArray(monthData.files) ? monthData.files : [];
+      const monthTotal = notes.length;
+      const monthCompleted = notes.filter((note) => note.status === 'green').length;
+      const monthCost = notes.reduce(
+        (acc, note) => acc + (Number.isFinite(note.estimatedCost) ? note.estimatedCost : 0),
+        0,
+      );
+      totalNotes += monthTotal;
+      totalCompleted += monthCompleted;
+      totalFiles += files.length;
+      if (files.length > 0) {
+        monthsWithFiles += 1;
+      }
+      totalCost += monthCost;
+      const percent = monthTotal ? Math.round((monthCompleted / monthTotal) * 100) : 0;
+      trend.push({ monthKey, monthTotal, monthCompleted, percent, files: files.length });
+
+      notes.forEach((note) => {
+        if (!note.dueDate) return;
+        const due = parseDueDate(note.dueDate);
+        if (!due) return;
+        upcoming.push({
+          due,
+          overdue: due < startOfToday,
+          title: note.title,
+          responsible: note.responsible,
+          monthKey,
+        });
+      });
+    });
+
+    const overallProgress = totalNotes ? Math.round((totalCompleted / totalNotes) * 100) : 0;
+    kpiTotalNotes.textContent = String(totalNotes);
+    if (kpiTotalCost) {
+      kpiTotalCost.innerHTML = `Budżet: ${formatCurrencyValue(totalCost)}`;
+    }
+    if (kpiOverallProgress) {
+      kpiOverallProgress.textContent = `${overallProgress}%`;
+    }
+    if (kpiCompletedNotes) {
+      kpiCompletedNotes.textContent = `${totalCompleted} ukończonych`;
+    }
+    if (kpiTotalFiles) {
+      kpiTotalFiles.textContent = String(totalFiles);
+    }
+    if (kpiFileCoverage) {
+      kpiFileCoverage.textContent = `${monthsWithFiles} miesięcy z plikami`;
+    }
+
+    if (kpiTrendBody) {
+      kpiTrendBody.innerHTML = '';
+      trend.forEach((row) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <th scope="row">${escapeHtml(formatMonthLabel(row.monthKey))}</th>
+          <td>${row.monthTotal}</td>
+          <td>${row.monthCompleted}</td>
+          <td>${row.percent}%</td>
+          <td>${row.files}</td>
+        `;
+        kpiTrendBody.appendChild(tr);
+      });
+    }
+
+    const sortedUpcoming = upcoming
+      .slice()
+      .sort((a, b) => a.due - b.due || a.title.localeCompare(b.title || '', 'pl'))
+      .slice(0, 5);
+
+    if (sortedUpcoming.length > 0) {
+      const next = sortedUpcoming[0];
+      if (kpiNextDeadline) {
+        kpiNextDeadline.textContent = formatShortDate(next.due);
+      }
+      if (kpiNextDeadlineOwner) {
+        const ownerParts = [formatMonthLabel(next.monthKey)];
+        if (next.responsible) {
+          ownerParts.push(next.responsible);
+        }
+        kpiNextDeadlineOwner.textContent = ownerParts.join(' • ');
+      }
+    } else {
+      if (kpiNextDeadline) {
+        kpiNextDeadline.textContent = '—';
+      }
+      if (kpiNextDeadlineOwner) {
+        kpiNextDeadlineOwner.textContent = 'Brak przypisania';
+      }
+    }
+
+    if (kpiUpcomingList) {
+      kpiUpcomingList.innerHTML = '';
+      sortedUpcoming.forEach((item) => {
+        const li = document.createElement('li');
+        li.className = 'kpi-upcoming__item';
+        if (item.overdue) {
+          li.classList.add('is-overdue');
+        }
+        const description = [];
+        if (item.responsible) {
+          description.push(`Odpowiedzialny: ${escapeHtml(item.responsible)}`);
+        }
+        description.push(formatMonthLabel(item.monthKey));
+        li.innerHTML = `
+          <span>${escapeHtml(item.title || 'Zadanie')}</span>
+          <time datetime="${item.due.toISOString().split('T')[0]}">${formatShortDate(item.due)}${
+          item.overdue ? ' (po terminie)' : ''
+        }</time>
+          <small>${description.join(' • ')}</small>
+        `;
+        kpiUpcomingList.appendChild(li);
+      });
+      if (kpiUpcomingEmpty) {
+        kpiUpcomingEmpty.hidden = sortedUpcoming.length > 0;
+      }
+      kpiUpcomingList.hidden = sortedUpcoming.length === 0;
+    }
+    if (kpiUpcomingEmpty && (!kpiUpcomingList || sortedUpcoming.length === 0)) {
+      kpiUpcomingEmpty.hidden = false;
+    }
+  }
+
+  function formatCurrencyValue(value) {
+    const safe = Number.isFinite(value) ? value : 0;
+    return currencyFormatter.format(Math.max(0, safe));
+  }
+
+  function parseDueDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+    const normalized = typeof value === 'string' ? value : String(value);
+    let date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+      date = new Date(`${normalized}T00:00:00`);
+    }
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function formatShortDate(date) {
+    const parsed = parseDueDate(date);
+    if (!parsed) return '—';
+    return shortDateFormatter.format(parsed);
+  }
+
   function renderClientsList() {
     if (!clientsList) return;
-    const clients = Array.isArray(appState?.clients) ? appState.clients : [];
+    const clients = Array.isArray(appState?.clients) ? appState.clients.slice() : [];
+    const search = (clientsSearch?.value || '').toString().trim().toLowerCase();
+    const statusFilterValue = clientsFilterStatus ? clientsFilterStatus.value : 'all';
+    const ownerFilterValue = clientsFilterOwner ? clientsFilterOwner.value : 'all';
+    const sortValue = clientsSort ? clientsSort.value : 'updatedAt-desc';
+
+    const owners = Array.from(
+      new Set(
+        clients
+          .map((client) => (client.owner ? String(client.owner).trim() : ''))
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }));
+    updateClientsOwnerOptions(owners);
+
+    const filtered = clients.filter((client) => {
+      const statusMatch = statusFilterValue === 'all' || client.status === statusFilterValue;
+      const ownerMatch = ownerFilterValue === 'all' || client.owner === ownerFilterValue;
+      const haystack = [client.name, client.industry, client.owner, client.notes, client.contact]
+        .map((value) => (value || '').toString().toLowerCase())
+        .join(' ');
+      const searchMatch = !search || haystack.includes(search);
+      return statusMatch && ownerMatch && searchMatch;
+    });
+
+    filtered.sort((a, b) => {
+      switch (sortValue) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name, 'pl', { sensitivity: 'base' });
+        case 'name-desc':
+          return b.name.localeCompare(a.name, 'pl', { sensitivity: 'base' });
+        case 'status-asc':
+          return formatClientStatus(a.status).localeCompare(formatClientStatus(b.status), 'pl');
+        case 'owner-asc':
+          return (a.owner || '').localeCompare(b.owner || '', 'pl', { sensitivity: 'base' });
+        case 'updatedAt-desc':
+        default:
+          return (
+            new Date(b.updatedAt || b.createdAt || 0).getTime() -
+            new Date(a.updatedAt || a.createdAt || 0).getTime()
+          );
+      }
+    });
+
     if (clientsEmpty) {
-      clientsEmpty.hidden = clients.length > 0;
+      if (clients.length === 0) {
+        clientsEmpty.textContent = clientsEmptyDefault;
+        clientsEmpty.hidden = false;
+      } else if (filtered.length === 0) {
+        clientsEmpty.textContent = 'Brak wyników dla zastosowanych filtrów.';
+        clientsEmpty.hidden = false;
+      } else {
+        clientsEmpty.textContent = clientsEmptyDefault;
+        clientsEmpty.hidden = true;
+      }
     }
-    if (clients.length === 0) {
-      clientsList.innerHTML = '';
-      return;
-    }
-    clientsList.innerHTML = clients
+
+    clientsList.innerHTML = filtered
       .map((client) => {
         const tooltip = client.updatedAt
           ? `Ostatnia aktualizacja: ${formatDate(client.updatedAt)}`
@@ -425,66 +700,239 @@
         `;
       })
       .join('');
+
+    if (clientsSegments) {
+      const segments = { active: 0, prospect: 0, 'on-hold': 0 };
+      clients.forEach((client) => {
+        if (segments[client.status] !== undefined) {
+          segments[client.status] += 1;
+        }
+      });
+      clientsSegments.innerHTML = `
+        <div class="clients-segment">
+          <strong>${clients.length}</strong>
+          <span>Wszyscy</span>
+        </div>
+        <div class="clients-segment">
+          <strong>${segments.active}</strong>
+          <span>${formatClientStatus('active')}</span>
+        </div>
+        <div class="clients-segment">
+          <strong>${segments.prospect}</strong>
+          <span>${formatClientStatus('prospect')}</span>
+        </div>
+        <div class="clients-segment">
+          <strong>${segments['on-hold']}</strong>
+          <span>${formatClientStatus('on-hold')}</span>
+        </div>
+        <div class="clients-segment">
+          <strong>${filtered.length}</strong>
+          <span>Widok po filtrach</span>
+        </div>
+      `;
+    }
+  }
+
+  function updateClientsOwnerOptions(owners) {
+    if (!clientsFilterOwner) return;
+    const current = clientsFilterOwner.value;
+    const existing = Array.from(clientsFilterOwner.options)
+      .slice(1)
+      .map((option) => option.value);
+    const isSame =
+      existing.length === owners.length &&
+      existing.every((value, index) => value === owners[index]);
+    if (isSame) {
+      if (owners.includes(current)) {
+        clientsFilterOwner.value = current;
+      } else {
+        clientsFilterOwner.value = 'all';
+      }
+      return;
+    }
+    clientsFilterOwner.innerHTML = '<option value="all">Opiekun: wszyscy</option>';
+    owners.forEach((owner) => {
+      const option = document.createElement('option');
+      option.value = owner;
+      option.textContent = owner;
+      clientsFilterOwner.appendChild(option);
+    });
+    if (owners.includes(current)) {
+      clientsFilterOwner.value = current;
+    }
+  }
+
+  function updateProductsFilterOptions(categories, owners) {
+    if (productsFilterCategory) {
+      const current = productsFilterCategory.value;
+      const existing = Array.from(productsFilterCategory.options)
+        .slice(1)
+        .map((option) => option.value);
+      const isSame =
+        existing.length === categories.length &&
+        existing.every((value, index) => value === categories[index]);
+      if (!isSame) {
+        productsFilterCategory.innerHTML = '<option value="all">Kategoria: wszystkie</option>';
+        categories.forEach((category) => {
+          const option = document.createElement('option');
+          option.value = category;
+          option.textContent = category;
+          productsFilterCategory.appendChild(option);
+        });
+      }
+      if (categories.includes(current)) {
+        productsFilterCategory.value = current;
+      } else {
+        productsFilterCategory.value = 'all';
+      }
+    }
+
+    if (productsFilterOwner) {
+      const currentOwner = productsFilterOwner.value;
+      const existingOwners = Array.from(productsFilterOwner.options)
+        .slice(1)
+        .map((option) => option.value);
+      const sameOwners =
+        existingOwners.length === owners.length &&
+        existingOwners.every((value, index) => value === owners[index]);
+      if (!sameOwners) {
+        productsFilterOwner.innerHTML = '<option value="all">Właściciel: wszyscy</option>';
+        owners.forEach((owner) => {
+          const option = document.createElement('option');
+          option.value = owner;
+          option.textContent = owner;
+          productsFilterOwner.appendChild(option);
+        });
+      }
+      if (owners.includes(currentOwner)) {
+        productsFilterOwner.value = currentOwner;
+      } else {
+        productsFilterOwner.value = 'all';
+      }
+    }
   }
 
   function renderProductsList() {
     if (!productsList) return;
-    const products = Array.isArray(appState?.products) ? appState.products : [];
+    const products = Array.isArray(appState?.products) ? appState.products.slice() : [];
     const validIds = new Set(products.map((product) => product.id));
     Array.from(openProductIds).forEach((id) => {
       if (!validIds.has(id)) {
         openProductIds.delete(id);
       }
     });
-    productsList.innerHTML = '';
+
+    const search = (productsSearch?.value || '').toString().trim().toLowerCase();
+    const categoryFilterValue = productsFilterCategory ? productsFilterCategory.value : 'all';
+    const releaseFilterValue = productsFilterRelease ? productsFilterRelease.value : 'all';
+    const ownerFilterValue = productsFilterOwner ? productsFilterOwner.value : 'all';
+    const sortValue = productsSort ? productsSort.value : 'updatedAt-desc';
+
+    const categories = Array.from(
+      new Set(products.map((product) => (product.category ? String(product.category).trim() : '')).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }));
+    const owners = Array.from(
+      new Set(products.map((product) => (product.owner ? String(product.owner).trim() : '')).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b, 'pl', { sensitivity: 'base' }));
+    updateProductsFilterOptions(categories, owners);
+
+    const filtered = products.filter((product) => {
+      const categoryMatch = categoryFilterValue === 'all' || product.category === categoryFilterValue;
+      const releaseMatch = releaseFilterValue === 'all' || product.release === releaseFilterValue;
+      const ownerMatch = ownerFilterValue === 'all' || product.owner === ownerFilterValue;
+      const tagsText = Array.isArray(product.tags) ? product.tags.join(' ') : '';
+      const haystack = [product.name, product.description, product.category, product.owner, tagsText]
+        .map((value) => (value || '').toString().toLowerCase())
+        .join(' ');
+      const searchMatch = !search || haystack.includes(search);
+      return categoryMatch && releaseMatch && ownerMatch && searchMatch;
+    });
+
+    filtered.sort((a, b) => {
+      switch (sortValue) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name, 'pl', { sensitivity: 'base' });
+        case 'name-desc':
+          return b.name.localeCompare(a.name, 'pl', { sensitivity: 'base' });
+        case 'category-asc':
+          return (a.category || '').localeCompare(b.category || '', 'pl', { sensitivity: 'base' });
+        case 'updatedAt-desc':
+        default:
+          return (
+            new Date(b.updatedAt || b.createdAt || 0).getTime() -
+            new Date(a.updatedAt || a.createdAt || 0).getTime()
+          );
+      }
+    });
+
     if (productsEmpty) {
-      productsEmpty.hidden = products.length > 0;
+      if (products.length === 0) {
+        productsEmpty.textContent = productsEmptyDefault;
+        productsEmpty.hidden = false;
+      } else if (filtered.length === 0) {
+        productsEmpty.textContent = 'Brak wyników dla zastosowanych filtrów.';
+        productsEmpty.hidden = false;
+      } else {
+        productsEmpty.textContent = productsEmptyDefault;
+        productsEmpty.hidden = true;
+      }
     }
-    if (products.length === 0) {
-      return;
-    }
-    products
-      .slice()
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
-      .forEach((product) => {
-        const description = product.description
-          ? `<p>${escapeHtml(product.description).replace(/\n/g, '<br>')}</p>`
-          : '<p class="product-description placeholder">Brak opisu produktu</p>';
-        const safeLink = sanitizeUrl(product.link);
-        const linkMarkup = safeLink
-          ? `<a href="${safeLink}" class="product-link" target="_blank" rel="noopener noreferrer">Materiały (${escapeHtml(
-              formatProductLinkLabel(safeLink),
-            )})</a>`
-          : '<span class="product-link product-link--empty">Brak linku</span>';
-        const item = document.createElement('li');
-        item.className = 'product-item';
-        item.dataset.id = product.id;
-        const detailsId = `product-details-${product.id}`;
-        const isOpen = openProductIds.has(product.id);
-        const thumbnail = product.image
-          ? `<img src="${product.image}" alt="Podgląd ${escapeHtml(product.name)}" loading="lazy" />`
-          : `<span class="product-thumb__placeholder" aria-hidden="true">${escapeHtml(getProductInitial(product.name))}</span>`;
-        item.innerHTML = `
-          <article class="product-card${isOpen ? ' is-open' : ''}" aria-labelledby="${detailsId}-label">
-            <button type="button" class="product-summary" data-action="toggle-product" data-id="${product.id}" aria-expanded="${isOpen}" aria-controls="${detailsId}">
-              <span class="product-thumb">${thumbnail}</span>
-              <span class="product-title" id="${detailsId}-label">${escapeHtml(product.name)}</span>
-              <span class="product-toggle-indicator" aria-hidden="true"></span>
-            </button>
-            <div class="product-details" id="${detailsId}" ${isOpen ? '' : 'hidden'}>
-              ${description}
-              <div class="product-meta">
-                ${linkMarkup}
-                <small>Aktualizacja: ${formatDate(product.updatedAt || product.createdAt)}</small>
-              </div>
-              <div class="product-actions">
-                <button type="button" class="btn btn-secondary btn-compact" data-action="remove-product" data-id="${product.id}">Usuń</button>
-              </div>
+
+    productsList.innerHTML = '';
+    filtered.forEach((product) => {
+      const description = product.description
+        ? `<p>${escapeHtml(product.description).replace(/\n/g, '<br>')}</p>`
+        : '<p class="product-description placeholder">Brak opisu produktu</p>';
+      const safeLink = sanitizeUrl(product.link);
+      const linkMarkup = safeLink
+        ? `<a href="${safeLink}" class="product-link" target="_blank" rel="noopener noreferrer">Materiały (${escapeHtml(
+            formatProductLinkLabel(safeLink),
+          )})</a>`
+        : '<span class="product-link product-link--empty">Brak linku</span>';
+      const item = document.createElement('li');
+      item.className = 'product-item';
+      item.dataset.id = product.id;
+      const detailsId = `product-details-${product.id}`;
+      const isOpen = openProductIds.has(product.id);
+      const thumbnail = product.image
+        ? `<img src="${product.image}" alt="Podgląd ${escapeHtml(product.name)}" loading="lazy" />`
+        : `<span class="product-thumb__placeholder" aria-hidden="true">${escapeHtml(getProductInitial(product.name))}</span>`;
+      const chipItems = [];
+      if (product.category) {
+        chipItems.push(`<span class="product-chip">${escapeHtml(product.category)}</span>`);
+      }
+      chipItems.push(
+        `<span class="product-chip product-chip--release-${product.release}">${formatProductRelease(product.release)}</span>`,
+      );
+      if (product.owner) {
+        chipItems.push(`<span class="product-chip">${escapeHtml(product.owner)}</span>`);
+      }
+      if (Array.isArray(product.tags)) {
+        chipItems.push(...product.tags.map((tag) => `<span class="product-chip">${escapeHtml(tag)}</span>`));
+      }
+      const tagsSection = chipItems.length ? `<div class="product-tags">${chipItems.join('')}</div>` : '';
+      item.innerHTML = `
+        <article class="product-card${isOpen ? ' is-open' : ''}" aria-labelledby="${detailsId}-label">
+          <button type="button" class="product-summary" data-action="toggle-product" data-id="${product.id}" aria-expanded="${isOpen}" aria-controls="${detailsId}">
+            <span class="product-thumb">${thumbnail}</span>
+            <span class="product-title" id="${detailsId}-label">${escapeHtml(product.name)}</span>
+            <span class="product-toggle-indicator" aria-hidden="true"></span>
+          </button>
+          <div class="product-details" id="${detailsId}" ${isOpen ? '' : 'hidden'}>
+            ${description}
+            ${tagsSection}
+            <div class="product-meta">
+              ${linkMarkup}
+              <small>Aktualizacja: ${formatDate(product.updatedAt || product.createdAt)}</small>
             </div>
-          </article>
-        `;
-        productsList.appendChild(item);
-      });
+            <div class="product-actions">
+              <button type="button" class="btn btn-secondary btn-compact" data-action="remove-product" data-id="${product.id}">Usuń</button>
+            </div>
+          </div>
+        </article>
+      `;
+      productsList.appendChild(item);
+    });
   }
 
   function renderAiBotsList() {
@@ -492,15 +940,19 @@
     updateAiMetrics(bots);
     if (!aiList) {
       if (aiEmpty) {
+        aiEmpty.textContent = aiEmptyDefault;
         aiEmpty.hidden = bots.length > 0;
       }
+      renderAiSchedule();
       return;
     }
     if (aiEmpty) {
+      aiEmpty.textContent = aiEmptyDefault;
       aiEmpty.hidden = bots.length > 0;
     }
     aiList.innerHTML = '';
     if (bots.length === 0) {
+      renderAiSchedule();
       return;
     }
     bots
@@ -512,10 +964,15 @@
         item.dataset.id = bot.id;
         const statusClass = getAiStatusClass(bot.status);
         const statusLabel = formatAiStatus(bot.status);
-        const goal = bot.goal ? escapeHtml(bot.goal).replace(/\n/g, '<br>') : 'Brak przypisanego celu';
+        const goal = bot.goal ? escapeHtml(bot.goal).replace(/
+/g, '<br>') : 'Brak przypisanego celu';
         const channel = bot.channel ? escapeHtml(bot.channel) : '—';
         const cadence = bot.cadence ? escapeHtml(bot.cadence) : '—';
-        const notes = bot.notes ? `<p class="ai-card__notes">${escapeHtml(bot.notes).replace(/\n/g, '<br>')}</p>` : '';
+        const notes = bot.notes ? `<p class="ai-card__notes">${escapeHtml(bot.notes).replace(/
+/g, '<br>')}</p>` : '';
+        const owner = bot.owner ? escapeHtml(bot.owner) : '—';
+        const assignedMonth = bot.assignedMonth ? formatMonthLabel(bot.assignedMonth) : 'Brak przypisania';
+        const nextAction = bot.nextAction ? formatShortDate(bot.nextAction) : 'Brak terminu';
         const headingId = `ai-bot-${bot.id}`;
         item.innerHTML = `
           <article class="ai-card" aria-labelledby="${headingId}">
@@ -534,9 +991,13 @@
                 <span class="ai-card__meta-value">${cadence}</span>
               </div>
               <div>
-                <span class="ai-card__meta-label">Aktualizacja</span>
-                <span class="ai-card__meta-value">${formatDate(bot.updatedAt || bot.createdAt)}</span>
+                <span class="ai-card__meta-label">Opiekun</span>
+                <span class="ai-card__meta-value">${owner}</span>
               </div>
+            </div>
+            <div class="ai-card__timeline">
+              <span>Następne działanie: ${nextAction}</span>
+              <span>Przypisanie: ${escapeHtml(assignedMonth)}</span>
             </div>
             ${notes}
             <div class="ai-card__footer">
@@ -546,6 +1007,62 @@
         `;
         aiList.appendChild(item);
       });
+    renderAiSchedule();
+  }
+
+  function renderAiSchedule() {
+    if (!aiScheduleList) return;
+    const bots = Array.isArray(appState?.aiBots) ? appState.aiBots : [];
+    const tasks = [];
+    bots.forEach((bot) => {
+      if (bot.nextAction) {
+        const date = parseDueDate(bot.nextAction);
+        if (date) {
+          tasks.push({ type: 'next', date, bot });
+        }
+      }
+      if (bot.assignedMonth) {
+        const date = parseDueDate(`${bot.assignedMonth}-01`);
+        if (date) {
+          tasks.push({ type: 'month', date, bot });
+        }
+      }
+    });
+    tasks.sort((a, b) => {
+      const diff = a.date - b.date;
+      if (diff !== 0) return diff;
+      if (a.type === b.type) return a.bot.name.localeCompare(b.bot.name, 'pl');
+      return a.type === 'next' ? -1 : 1;
+    });
+    const upcoming = tasks.slice(0, 6);
+    aiScheduleList.innerHTML = '';
+    if (upcoming.length === 0) {
+      if (aiScheduleEmpty) {
+        aiScheduleEmpty.hidden = false;
+      }
+      aiScheduleList.hidden = true;
+      return;
+    }
+    aiScheduleList.hidden = false;
+    upcoming.forEach((task) => {
+      const li = document.createElement('li');
+      li.className = 'ai-schedule__item';
+      const label = task.type === 'next' ? 'Najbliższe działanie' : 'Przypisanie miesiąca';
+      const monthLabel = task.type === 'month' && task.bot.assignedMonth
+        ? formatMonthLabel(task.bot.assignedMonth)
+        : '';
+      li.innerHTML = `
+        <div>
+          <strong>${escapeHtml(task.bot.name)}</strong>
+          <small>${label}${monthLabel ? ` • ${escapeHtml(monthLabel)}` : ''}</small>
+        </div>
+        <small>${formatShortDate(task.date)}</small>
+      `;
+      aiScheduleList.appendChild(li);
+    });
+    if (aiScheduleEmpty) {
+      aiScheduleEmpty.hidden = true;
+    }
   }
 
   function updateAiMetrics(bots) {
@@ -867,6 +1384,13 @@
     appState.clients.push(payload);
     clientForm.reset();
     renderClientsList();
+    logHistory({
+      type: 'client',
+      title: 'Dodano klienta',
+      description: `${payload.name} • ${formatClientStatus(payload.status)}`,
+      actor: 'Użytkownik',
+      meta: { action: 'create', clientId: payload.id },
+    });
     scheduleSave();
     createToast('Dodano klienta do listy', 'success');
   }
@@ -884,8 +1408,17 @@
     if (!id) return;
     const index = appState.clients.findIndex((client) => client.id === id);
     if (index === -1) return;
-    appState.clients.splice(index, 1);
+    const [removed] = appState.clients.splice(index, 1);
     renderClientsList();
+    if (removed) {
+      logHistory({
+        type: 'client',
+        title: 'Usunięto klienta',
+        description: removed.name || 'Klient',
+        actor: 'Użytkownik',
+        meta: { action: 'delete', clientId: removed.id },
+      });
+    }
     scheduleSave();
     createToast('Klient został usunięty', 'info');
   }
@@ -938,6 +1471,10 @@
       description,
       link: safeLink,
       image: imageData,
+      category: (formData.get('category') || '').toString().trim(),
+      release: (formData.get('release') || 'released').toString(),
+      owner: (formData.get('owner') || '').toString().trim(),
+      tags: (formData.get('tags') || '').toString(),
       createdAt: now,
       updatedAt: now,
     });
@@ -951,6 +1488,13 @@
       openProductIds.add(payload.id);
     }
     renderProductsList();
+    logHistory({
+      type: 'product',
+      title: 'Dodano produkt',
+      description: `${payload.name} • ${formatProductRelease(payload.release)}`,
+      actor: 'Użytkownik',
+      meta: { action: 'create', productId: payload.id },
+    });
     scheduleSave();
     createToast('Dodano produkt do katalogu', 'success');
   }
@@ -1005,9 +1549,18 @@
     if (!id) return;
     const index = appState.products.findIndex((product) => product.id === id);
     if (index === -1) return;
-    appState.products.splice(index, 1);
+    const [removedProduct] = appState.products.splice(index, 1);
     openProductIds.delete(id);
     renderProductsList();
+    if (removedProduct) {
+      logHistory({
+        type: 'product',
+        title: 'Usunięto produkt',
+        description: removedProduct.name || 'Produkt',
+        actor: 'Użytkownik',
+        meta: { action: 'delete', productId: removedProduct.id },
+      });
+    }
     scheduleSave();
     createToast('Produkt usunięty z katalogu', 'info');
   }
@@ -1033,6 +1586,9 @@
       status: (formData.get('status') || 'training').toString(),
       goal: (formData.get('goal') || '').toString().trim(),
       notes: (formData.get('notes') || '').toString().trim(),
+      owner: (formData.get('owner') || '').toString().trim(),
+      assignedMonth: (formData.get('assignedMonth') || '').toString(),
+      nextAction: (formData.get('nextAction') || '').toString(),
       createdAt: now,
       updatedAt: now,
     });
@@ -1043,6 +1599,13 @@
       nameField.focus();
     }
     renderAiBotsList();
+    logHistory({
+      type: 'ai',
+      title: 'Dodano bota AI',
+      description: `${payload.name} • ${formatAiStatus(payload.status)}`,
+      actor: 'Użytkownik',
+      meta: { action: 'create', botId: payload.id },
+    });
     scheduleSave();
     createToast('Dodano bota AI', 'success');
   }
@@ -1060,8 +1623,17 @@
     if (!id) return;
     const index = appState.aiBots.findIndex((bot) => bot.id === id);
     if (index === -1) return;
-    appState.aiBots.splice(index, 1);
+    const [removedBot] = appState.aiBots.splice(index, 1);
     renderAiBotsList();
+    if (removedBot) {
+      logHistory({
+        type: 'ai',
+        title: 'Usunięto bota AI',
+        description: removedBot.name ? removedBot.name : 'Bot AI',
+        actor: 'Użytkownik',
+        meta: { action: 'delete', botId: removedBot.id },
+      });
+    }
     scheduleSave();
     createToast('Bot został usunięty', 'info');
   }
@@ -1086,16 +1658,24 @@
     event.preventDefault();
     if (!activeMonth) return;
     const formData = new FormData(noteForm);
-    const title = formData.get('title').trim();
+    const title = (formData.get('title') || '').toString().trim();
     if (!title) {
       createToast('Tytuł jest wymagany', 'error');
       noteForm.elements.title.focus();
       return;
     }
-    const id = formData.get('noteId');
-    const content = formData.get('content').trim();
-    const priority = formData.get('priority');
-    const status = formData.get('status');
+    const id = (formData.get('noteId') || '').toString();
+    const content = (formData.get('content') || '').toString().trim();
+    const priority = (formData.get('priority') || 'medium').toString();
+    const status = (formData.get('status') || 'red').toString();
+    const responsible = (formData.get('responsible') || '').toString().trim();
+    const dueDateValue = (formData.get('dueDate') || '').toString();
+    const dueDate = dueDateValue ? dueDateValue : '';
+    const estimatedCostValue = (formData.get('estimatedCost') || '').toString().trim();
+    let estimatedCost = estimatedCostValue ? Number.parseFloat(estimatedCostValue.replace(',', '.')) : 0;
+    if (!Number.isFinite(estimatedCost) || estimatedCost < 0) {
+      estimatedCost = 0;
+    }
     const now = new Date().toISOString();
     const notes = appState.months[activeMonth].notes;
 
@@ -1107,21 +1687,43 @@
         content,
         priority,
         status,
+        responsible,
+        dueDate,
+        estimatedCost,
         updatedAt: now,
       });
       createToast('Notatka zaktualizowana', 'success');
+      logHistory({
+        type: 'note',
+        title: `Zmieniono notatkę • ${formatMonthLabel(activeMonth)}`,
+        description: `${title} • Status: ${translateStatus(status)}`,
+        actor: 'Użytkownik',
+        meta: { action: 'update', month: activeMonth, noteId: note.id },
+      });
     } else {
-      notes.push({
-        id: crypto.randomUUID(),
+      const noteId = crypto.randomUUID();
+      const payload = normalizeNote({
+        id: noteId,
         title,
         content,
         status,
         priority,
+        responsible,
+        dueDate,
+        estimatedCost,
         checked: false,
         createdAt: now,
         updatedAt: now,
       });
+      notes.push(payload);
       createToast('Dodano notatkę', 'success');
+      logHistory({
+        type: 'note',
+        title: `Dodano notatkę • ${formatMonthLabel(activeMonth)}`,
+        description: `${title} • Status: ${translateStatus(status)}`,
+        actor: 'Użytkownik',
+        meta: { action: 'create', month: activeMonth, noteId },
+      });
     }
     renderNotes();
     renderTimeline();
@@ -1161,11 +1763,23 @@
     } else if (action === 'delete-note') {
       if (confirm('Usunąć notatkę?')) {
         const idx = notes.findIndex((n) => n.id === noteId);
-        notes.splice(idx, 1);
+        if (idx === -1) {
+          return;
+        }
+        const [removed] = notes.splice(idx, 1);
         renderNotes();
         renderTimeline();
         scheduleSave();
         createToast('Notatka usunięta', 'info');
+        if (removed) {
+          logHistory({
+            type: 'note',
+            title: `Usunięto notatkę • ${formatMonthLabel(activeMonth)}`,
+            description: removed.title ? `${removed.title}` : 'Usunięto zadanie',
+            actor: 'Użytkownik',
+            meta: { action: 'delete', month: activeMonth, noteId },
+          });
+        }
       }
     }
   }
@@ -1217,6 +1831,16 @@
     noteForm.elements.content.value = note.content;
     noteForm.elements.priority.value = note.priority;
     noteForm.elements.status.value = note.status;
+    if (noteForm.elements.responsible) {
+      noteForm.elements.responsible.value = note.responsible || '';
+    }
+    if (noteForm.elements.dueDate) {
+      noteForm.elements.dueDate.value = note.dueDate || '';
+    }
+    if (noteForm.elements.estimatedCost) {
+      noteForm.elements.estimatedCost.value =
+        Number.isFinite(note.estimatedCost) && note.estimatedCost > 0 ? String(note.estimatedCost) : '';
+    }
     setStatusButtons(note.status);
     noteForm.elements.title.focus();
     unsavedChanges = false;
@@ -1254,21 +1878,55 @@
     const sortValue = sortSelect.value;
 
     const filtered = notes.filter((note) => {
-      const matchesQuery = !query || note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query);
+      const dueLabel = note.dueDate ? formatShortDate(note.dueDate) : '';
+      const haystack = [note.title, note.content, note.responsible, dueLabel]
+        .map((value) => (value || '').toString().toLowerCase())
+        .join(' ');
+      const matchesQuery = !query || haystack.includes(query);
       const matchesStatus = statusFilter === 'all' || note.status === statusFilter;
       const matchesPriority = priorityFilter === 'all' || note.priority === priorityFilter;
       return matchesQuery && matchesStatus && matchesPriority;
     });
 
     const [sortField, sortDirection] = sortValue.split('-');
+    const direction = sortDirection === 'asc' ? 1 : -1;
     filtered.sort((a, b) => {
-      let comparison = 0;
-      if (sortField === 'title' || sortField === 'status') {
-        comparison = a[sortField].localeCompare(b[sortField]);
-      } else {
-        comparison = new Date(a[sortField]) - new Date(b[sortField]);
+      switch (sortField) {
+        case 'title':
+        case 'status':
+          return (
+            direction *
+            (a[sortField] || '').localeCompare(b[sortField] || '', 'pl', {
+              sensitivity: 'base',
+            })
+          );
+        case 'responsible':
+          return (
+            direction *
+            (a.responsible || '').localeCompare(b.responsible || '', 'pl', {
+              sensitivity: 'base',
+            })
+          );
+        case 'estimatedCost':
+          return direction * ((a.estimatedCost || 0) - (b.estimatedCost || 0));
+        case 'dueDate': {
+          const fallback = sortDirection === 'asc' ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
+          const aTime = parseDueDate(a.dueDate)?.getTime() ?? fallback;
+          const bTime = parseDueDate(b.dueDate)?.getTime() ?? fallback;
+          return direction * (aTime - bTime);
+        }
+        case 'createdAt':
+        case 'updatedAt':
+          return (
+            direction *
+            (new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime())
+          );
+        default:
+          return (
+            direction *
+            (new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
+          );
       }
-      return sortDirection === 'asc' ? comparison : -comparison;
     });
 
     noteListEl.innerHTML = '';
@@ -1276,6 +1934,26 @@
       const li = document.createElement('li');
       li.className = 'note-item';
       li.dataset.id = note.id;
+      const responsibleLabel = note.responsible
+        ? `<span><span class="meta-icon" aria-hidden="true">👤</span>${escapeHtml(note.responsible)}</span>`
+        : '';
+      const dueLabel = note.dueDate
+        ? `<span><span class="meta-icon" aria-hidden="true">🗓</span>${formatShortDate(note.dueDate)}</span>`
+        : '';
+      const costLabel = Number.isFinite(note.estimatedCost) && note.estimatedCost > 0
+        ? `<span><span class="meta-icon" aria-hidden="true">💰</span>${formatCurrencyValue(note.estimatedCost)}</span>`
+        : '';
+      const noteMeta = [
+        `<span><span class="meta-icon" aria-hidden="true">●</span>${translateStatus(note.status)}</span>`,
+        responsibleLabel,
+        dueLabel,
+        costLabel,
+      ]
+        .filter(Boolean)
+        .join('');
+      const noteDescription = note.content
+        ? `<div class="note-content">${escapeHtml(note.content).replace(/\n/g, '<br>')}</div>`
+        : '';
       li.innerHTML = `
         <div class="note-meta">
           <div>
@@ -1288,9 +1966,10 @@
             <button class="btn btn-secondary" data-action="delete-note">Usuń</button>
           </div>
         </div>
-        <div class="note-content">${escapeHtml(note.content)}</div>
+        ${noteDescription}
         <div class="note-footer">
-          <small>Status: ${translateStatus(note.status)}</small>
+          <div class="note-footer__meta">${noteMeta}</div>
+          <small>Aktualizacja: ${formatDate(note.updatedAt || note.createdAt)}</small>
         </div>
       `;
       li.title = `Utworzono: ${formatDate(note.createdAt)}\nAktualizacja: ${formatDate(note.updatedAt)}`;
@@ -1390,9 +2069,19 @@
     if (action === 'remove-file') {
       if (confirm('Usunąć plik?')) {
         const idx = files.findIndex((f) => f.id === fileId);
-        files.splice(idx, 1);
+        const [removedFile] = files.splice(idx, 1);
         window.metcorDB.removeFile(fileId);
         renderFiles();
+        renderTimeline();
+        if (removedFile) {
+          logHistory({
+            type: 'file',
+            title: `Usunięto plik • ${formatMonthLabel(activeMonth)}`,
+            description: removedFile.safeName || removedFile.name || 'Plik',
+            actor: 'Użytkownik',
+            meta: { action: 'delete', month: activeMonth, fileId },
+          });
+        }
         scheduleSave();
         createToast('Plik usunięty', 'info');
       }
@@ -1444,6 +2133,14 @@
       appState.months[activeMonth].files.push({ ...record, data: null });
       await window.metcorDB.addFile(record);
       renderFiles();
+      renderTimeline();
+      logHistory({
+        type: 'file',
+        title: `Dodano plik • ${formatMonthLabel(activeMonth)}`,
+        description: `${safeName} (${formatBytes(file.size)})`,
+        actor: 'Użytkownik',
+        meta: { action: 'create', month: activeMonth, fileId: record.id },
+      });
       scheduleSave();
       createToast(`Dodano plik ${file.name}`, 'success');
     });
@@ -1505,6 +2202,21 @@
     }
   }
 
+  function formatProductRelease(release) {
+    switch (release) {
+      case 'released':
+        return 'W produkcji';
+      case 'beta':
+        return 'Beta / pilotaż';
+      case 'roadmap':
+        return 'W przygotowaniu';
+      case 'retired':
+        return 'Wycofany';
+      default:
+        return release;
+    }
+  }
+
   function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1512,6 +2224,32 @@
       reader.onerror = () => reject(reader.error || new Error('Błąd odczytu pliku'));
       reader.readAsDataURL(file);
     });
+  }
+
+  function normalizeNote(note) {
+    if (!note || typeof note !== 'object') return null;
+    const now = new Date().toISOString();
+    const allowedStatuses = new Set(['green', 'orange', 'red']);
+    const allowedPriority = new Set(['low', 'medium', 'high']);
+    const rawCost =
+      typeof note.estimatedCost === 'number'
+        ? note.estimatedCost
+        : parseFloat(note.estimatedCost || '0');
+    const estimatedCost = Number.isFinite(rawCost) && rawCost >= 0 ? Number(rawCost) : 0;
+    const dueDate = note.dueDate ? String(note.dueDate) : '';
+    return {
+      id: note.id || crypto.randomUUID(),
+      title: note.title ? String(note.title) : '',
+      content: note.content ? String(note.content) : '',
+      status: allowedStatuses.has(note.status) ? note.status : 'red',
+      priority: allowedPriority.has(note.priority) ? note.priority : 'medium',
+      checked: Boolean(note.checked),
+      responsible: note.responsible ? String(note.responsible) : '',
+      dueDate,
+      estimatedCost,
+      createdAt: note.createdAt || now,
+      updatedAt: note.updatedAt || note.createdAt || now,
+    };
   }
 
   function normalizeClient(client) {
@@ -1537,12 +2275,26 @@
     const now = new Date().toISOString();
     const rawImage = typeof product.image === 'string' ? product.image : '';
     const image = rawImage.startsWith('data:image/') ? rawImage : '';
+    const tags = Array.isArray(product.tags)
+      ? product.tags.map((tag) => String(tag).trim()).filter(Boolean)
+      : typeof product.tags === 'string'
+      ? product.tags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean)
+      : [];
+    const allowedRelease = new Set(['released', 'beta', 'roadmap', 'retired']);
+    const release = allowedRelease.has(product.release) ? product.release : 'released';
     return {
       id: product.id || crypto.randomUUID(),
       name: product.name ? String(product.name) : '',
       description: product.description ? String(product.description) : '',
       link: sanitizeUrl(product.link),
       image,
+      category: product.category ? String(product.category) : '',
+      release,
+      owner: product.owner ? String(product.owner) : '',
+      tags,
       createdAt: product.createdAt || now,
       updatedAt: product.updatedAt || product.createdAt || now,
     };
@@ -1553,6 +2305,10 @@
     const now = new Date().toISOString();
     const allowedStatuses = new Set(['active', 'training', 'paused']);
     const status = allowedStatuses.has(bot.status) ? bot.status : 'training';
+    const assignedMonth = bot.assignedMonth && monthRange.includes(bot.assignedMonth)
+      ? bot.assignedMonth
+      : '';
+    const nextAction = bot.nextAction ? String(bot.nextAction) : '';
     return {
       id: bot.id || crypto.randomUUID(),
       name: bot.name ? String(bot.name) : '',
@@ -1561,9 +2317,113 @@
       goal: bot.goal ? String(bot.goal) : '',
       status,
       notes: bot.notes ? String(bot.notes) : '',
+      owner: bot.owner ? String(bot.owner) : '',
+      assignedMonth,
+      nextAction,
       createdAt: bot.createdAt || now,
       updatedAt: bot.updatedAt || bot.createdAt || now,
     };
+  }
+
+  function normalizeHistoryEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    const now = new Date().toISOString();
+    const allowedTypes = new Set(['note', 'file', 'client', 'product', 'ai']);
+    const type = allowedTypes.has(entry.type) ? entry.type : 'note';
+    return {
+      id: entry.id || crypto.randomUUID(),
+      type,
+      title: entry.title ? String(entry.title) : '',
+      description: entry.description ? String(entry.description) : '',
+      actor: entry.actor ? String(entry.actor) : 'System',
+      createdAt: entry.createdAt || now,
+      meta: entry.meta && typeof entry.meta === 'object' ? entry.meta : {},
+    };
+  }
+
+  function renderHistory() {
+    if (!historyList) return;
+    const entries = Array.isArray(appState?.history) ? appState.history.slice(0, HISTORY_LIMIT) : [];
+    historyList.innerHTML = '';
+    if (entries.length === 0) {
+      historyList.hidden = true;
+      if (historyEmpty) {
+        historyEmpty.hidden = false;
+        historyEmpty.textContent = historyEmptyDefault;
+      }
+      return;
+    }
+    historyList.hidden = false;
+    if (historyEmpty) {
+      historyEmpty.hidden = true;
+      historyEmpty.textContent = historyEmptyDefault;
+    }
+    entries.forEach((entry) => {
+      const li = document.createElement('li');
+      li.className = 'history-entry';
+      const badgeClass = getHistoryBadgeModifier(entry.type);
+      const safeTitle = escapeHtml(entry.title || 'Aktualizacja');
+      const safeActor = escapeHtml(entry.actor || 'System');
+      const timestamp = entry.createdAt || '';
+      const description = entry.description
+        ? `<p>${escapeHtml(entry.description).replace(/\n/g, '<br>')}</p>`
+        : '';
+      li.innerHTML = `
+        <div class="history-entry__meta">
+          <span class="history-entry__badge ${badgeClass}">${formatHistoryType(entry.type)}</span>
+          <span>${safeActor}</span>
+          <time datetime="${timestamp}">${formatDate(timestamp)}</time>
+        </div>
+        <div>
+          <strong>${safeTitle}</strong>
+          ${description}
+        </div>
+      `;
+      historyList.appendChild(li);
+    });
+  }
+
+  function logHistory(entry) {
+    if (!appState) return;
+    const normalized = normalizeHistoryEntry(entry);
+    if (!normalized) return;
+    appState.history.unshift(normalized);
+    if (appState.history.length > HISTORY_LIMIT) {
+      appState.history.length = HISTORY_LIMIT;
+    }
+    renderHistory();
+  }
+
+  function formatHistoryType(type) {
+    switch (type) {
+      case 'file':
+        return 'Pliki';
+      case 'client':
+        return 'Klienci';
+      case 'product':
+        return 'Produkty';
+      case 'ai':
+        return 'AI';
+      case 'note':
+      default:
+        return 'Notatki';
+    }
+  }
+
+  function getHistoryBadgeModifier(type) {
+    switch (type) {
+      case 'file':
+        return 'history-entry__badge--files';
+      case 'client':
+        return 'history-entry__badge--clients';
+      case 'product':
+        return 'history-entry__badge--products';
+      case 'ai':
+        return 'history-entry__badge--ai';
+      case 'note':
+      default:
+        return 'history-entry__badge--notes';
+    }
   }
 
   function formatClientStatus(status) {
