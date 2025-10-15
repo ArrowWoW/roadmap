@@ -1,0 +1,102 @@
+{
+  "months": {
+    "2025-10": {
+      "notes": [
+        {
+          "id": "init-1",
+          "title": "Kampania wprowadzająca",
+          "content": "Przygotować landing page z ofertą na Q4. Zbadać konkurencję.",
+          "status": "orange",
+          "priority": "high",
+          "checked": false,
+          "createdAt": "2025-08-01T10:00:00.000Z",
+          "updatedAt": "2025-08-15T09:30:00.000Z"
+        }
+      ],
+      "files": []
+    },
+    "2025-11": {
+      "notes": [
+        {
+          "id": "init-2",
+          "title": "Plan targów branżowych",
+          "content": "Zarezerwować stoisko, przygotować materiały drukowane.",
+          "status": "green",
+          "priority": "medium",
+          "checked": true,
+          "createdAt": "2025-08-10T12:00:00.000Z",
+          "updatedAt": "2025-09-01T08:15:00.000Z"
+        }
+      ],
+      "files": []
+    }
+  },
+  "clients": [
+    {
+      "id": "client-metcor-1",
+      "name": "Harden Industries",
+      "industry": "Konstrukcje stalowe",
+      "owner": "Anna Kowalska",
+      "contact": "anna.kowalska@harden.pl",
+      "status": "active",
+      "notes": "Kluczowy partner OEM, oczekuje pakietu materiałów sprzedażowych do końca Q3.",
+      "createdAt": "2025-07-20T09:00:00.000Z",
+      "updatedAt": "2025-07-28T14:30:00.000Z"
+    },
+    {
+      "id": "client-metcor-2",
+      "name": "Baltic Offshore",
+      "industry": "Energetyka morska",
+      "owner": "Michał Nowak",
+      "contact": "m.nowak@balticoffshore.eu",
+      "status": "prospect",
+      "notes": "W trakcie uzgadniania warunków pilotażu. Wymagane case studies z sektora morskiego.",
+      "createdAt": "2025-08-05T11:20:00.000Z",
+      "updatedAt": "2025-08-18T16:45:00.000Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "product-metcor-1",
+      "name": "Metcor Shield 300",
+      "description": "System antykorozyjny do konstrukcji offshore – modułowy zestaw powłok zabezpieczających o krótkim czasie aplikacji.",
+      "link": "https://metcor.pl/produkty/shield-300",
+      "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMTI4IDEyOCI+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIGZpbGw9IiMyQTJGMzYiLz48cGF0aCBkPSJNMjAgOTJMNTYgMzZsMjIgMjggMTAtMTYgMjAgNDRIMjB6IiBmaWxsPSIjRDgyQzJDIi8+PGNpcmNsZSBjeD0iNDQiIGN5PSI0NCIgcj0iMTIiIGZpbGw9IiNGN0Y3RjgiIG9wYWNpdHk9IjAuODUiLz48L3N2Zz4=",
+      "createdAt": "2025-07-12T09:15:00.000Z",
+      "updatedAt": "2025-08-02T14:05:00.000Z"
+    },
+    {
+      "id": "product-metcor-2",
+      "name": "Metcor Flow NX",
+      "description": "Pakiet do optymalizacji przepływu materiałów w zakładach ciężkich wraz z dashboardem KPI.",
+      "link": "https://metcor.pl/produkty/flow-nx",
+      "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMTI4IDEyOCI+PHJlY3Qgd2lkdGg9IjEyOCIgaGVpZ2h0PSIxMjgiIGZpbGw9IiMxRjIzMjgiLz48cmVjdCB4PSIyMCIgeT0iMjgiIHdpZHRoPSI4OCIgaGVpZ2h0PSI3MiIgcng9IjEyIiBmaWxsPSIjMkEyRjM2Ii8+PHBhdGggZD0iTTI4IDg4aDcyIiBzdHJva2U9IiNEODJDMkMiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGNpcmNsZSBjeD0iNDgiIGN5PSI1NiIgcj0iMTQiIGZpbGw9IiNGN0Y3RjgiLz48cGF0aCBkPSJNNDggNDhsOCAxMmgtMTZ6IiBmaWxsPSIjRDgyQzJDIi8+PC9zdmc+",
+      "createdAt": "2025-07-28T10:40:00.000Z",
+      "updatedAt": "2025-08-10T08:55:00.000Z"
+    }
+  ],
+  "aiBots": [
+    {
+      "id": "ai-bot-metcor-1",
+      "name": "Atlas Outreach",
+      "channel": "LinkedIn",
+      "cadence": "Codziennie 09:00",
+      "goal": "Analiza wzmiankowanych fraz o Metcor i automatyczne przygotowanie streszczeń dla zespołu PR.",
+      "status": "active",
+      "notes": "Synchronizacja z kontem firmowym oraz pulsem branżowym. Publikacja wątku raportowego raz w tygodniu.",
+      "createdAt": "2025-07-15T07:30:00.000Z",
+      "updatedAt": "2025-08-12T06:10:00.000Z"
+    },
+    {
+      "id": "ai-bot-metcor-2",
+      "name": "Vulcan Insight",
+      "channel": "Web & Email",
+      "cadence": "2× tydzień",
+      "goal": "Generowanie rekomendacji kampanii retargetingowych na bazie danych z katalogu produktów.",
+      "status": "training",
+      "notes": "Model w trakcie tuningu – wymaga dodatkowych case studies ze stoczni offshore.",
+      "createdAt": "2025-08-01T08:45:00.000Z",
+      "updatedAt": "2025-08-14T09:20:00.000Z"
+    }
+  ]
+}

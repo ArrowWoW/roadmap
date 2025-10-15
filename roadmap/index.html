@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pl" class="theme-light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metcor Marketing Roadmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="background-layer" aria-hidden="true"></div>
+  <div class="app-shell">
+    <header class="app-header" role="banner">
+      <div class="header-slot header-slot--logo">
+        <button type="button" class="logo-button" aria-label="Odśwież interfejs" title="Odśwież interfejs">
+          <img src="assets/metcor.png" alt="Logo Metcor" class="logo" />
+        </button>
+      </div>
+      <div class="header-slot header-slot--title">
+        <h1>Metcor Marketing Roadmap</h1>
+        <p class="header-subtitle">Ścieżka realizacji kluczowych aktywności marketingowych Metcor</p>
+      </div>
+      <div class="header-slot header-slot--toolbar">
+        <div class="toolbar" role="toolbar" aria-label="Nawigacja widoków i ustawienia">
+          <nav class="app-menu" aria-label="Menu główne">
+            <ul>
+              <li><button type="button" class="menu-link is-active" data-menu="timeline" aria-current="page">Roadmapa</button></li>
+              <li><button type="button" class="menu-link" data-menu="clients">Klienci Współpraca</button></li>
+              <li><button type="button" class="menu-link" data-menu="products">Katalog produktów</button></li>
+              <li><button type="button" class="menu-link" data-menu="ai">AI Marketing</button></li>
+            </ul>
+          </nav>
+          <button type="button" class="btn btn-secondary btn-theme" data-action="toggle-theme" aria-pressed="false">Tryb ciemny</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main" role="main">
+      <section class="timeline-overview" aria-labelledby="timeline-heading">
+        <header class="timeline-header">
+          <div>
+            <h2 id="timeline-heading">Harmonogram działań</h2>
+            <p>Wybierz miesiąc, aby otworzyć pulpit i zarządzać plikami oraz notatkami kampanii.</p>
+          </div>
+          <ul class="timeline-legend" aria-label="Legenda statusów notatek">
+            <li><span class="legend-dot legend-dot--green" aria-hidden="true"></span>Gotowa</li>
+            <li><span class="legend-dot legend-dot--orange" aria-hidden="true"></span>W trakcie</li>
+            <li><span class="legend-dot legend-dot--red" aria-hidden="true"></span>Niezrealizowane</li>
+          </ul>
+        </header>
+        <nav class="timeline" aria-label="Oś czasu planu marketingowego">
+          <ol class="timeline-list" id="timeline-list"></ol>
+        </nav>
+      </section>
+
+    <div id="panel-scrim" class="panel-scrim" hidden></div>
+    <aside id="month-panel" class="month-panel" aria-hidden="true" aria-live="polite" aria-label="Panel miesiąca" role="dialog" aria-modal="true" tabindex="-1">
+        <div class="panel-header">
+          <div class="panel-title">
+            <h2 id="panel-month-title">Miesiąc</h2>
+            <p id="panel-month-subtitle">Wybierz miesiąc, aby zobaczyć szczegóły.</p>
+          </div>
+          <button type="button" class="panel-close" aria-label="Zamknij panel" data-action="close-panel">×</button>
+        </div>
+        <div class="panel-metrics" role="status" aria-live="polite">
+          <dl class="metric" aria-label="Liczba notatek">
+            <dt>Notatki</dt>
+            <dd id="metric-notes">0</dd>
+          </dl>
+          <dl class="metric" aria-label="Liczba plików">
+            <dt>Pliki</dt>
+            <dd id="metric-files">0</dd>
+          </dl>
+          <dl class="metric" aria-label="Postęp notatek">
+            <dt>Postęp</dt>
+            <dd id="metric-progress" tabindex="0">0%</dd>
+          </dl>
+        </div>
+      <div class="panel-body">
+        <section class="files-column" aria-labelledby="files-heading">
+          <header class="section-header">
+            <h3 id="files-heading">Pliki</h3>
+            <div class="section-actions">
+              <button type="button" class="btn btn-secondary" data-action="add-file" aria-describedby="files-heading">Dodaj plik</button>
+            </div>
+          </header>
+          <div class="dropzone" role="group" aria-label="Strefa upuszczania plików">
+            <p>Przeciągnij i upuść pliki (max 25 MB)</p>
+          </div>
+          <ul class="file-list" id="file-list" aria-live="polite"></ul>
+        </section>
+
+        <section class="notes-column" aria-labelledby="notes-heading">
+          <header class="section-header">
+            <h3 id="notes-heading">Notatki</h3>
+            <div class="section-actions">
+              <button type="button" class="btn btn-secondary" data-action="new-note" aria-describedby="notes-heading" aria-expanded="false">Nowa notatka (N)</button>
+            </div>
+          </header>
+          <div class="note-form-placeholder" id="note-form-placeholder">
+            <p>Wybierz „Nowa notatka”, aby zaplanować zadanie lub kliknij istniejącą notatkę, by ją edytować.</p>
+          </div>
+          <form id="note-form" class="note-form" autocomplete="off" hidden>
+            <label class="form-field">
+              <span>Tytuł *</span>
+              <input type="text" name="title" required aria-required="true" />
+            </label>
+            <label class="form-field">
+              <span>Treść</span>
+              <textarea name="content" rows="4"></textarea>
+            </label>
+            <label class="form-field">
+              <span>Priorytet</span>
+              <select name="priority">
+                <option value="low">Niski</option>
+                <option value="medium">Średni</option>
+                <option value="high">Wysoki</option>
+              </select>
+            </label>
+            <div class="status-buttons" role="group" aria-label="Status notatki">
+              <button type="button" class="status-btn" data-status="green">Gotowa</button>
+              <button type="button" class="status-btn" data-status="orange">W trakcie</button>
+              <button type="button" class="status-btn" data-status="red">Niezrealizowane</button>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Zapisz</button>
+              <button type="button" class="btn btn-secondary" data-action="cancel-edit">Anuluj</button>
+            </div>
+            <input type="hidden" name="noteId" />
+            <input type="hidden" name="status" value="red" />
+          </form>
+
+          <div class="notes-toolbar" role="group" aria-label="Filtry notatek">
+            <label>
+              <span class="sr-only">Szukaj</span>
+              <input type="search" id="note-search" placeholder="Szukaj notatek" />
+            </label>
+            <select id="filter-status" aria-label="Filtruj po statusie">
+              <option value="all">Status: wszystkie</option>
+              <option value="green">Gotowa</option>
+              <option value="orange">W trakcie</option>
+              <option value="red">Niezrealizowane</option>
+            </select>
+            <select id="filter-priority" aria-label="Filtruj po priorytecie">
+              <option value="all">Priorytet: wszystkie</option>
+              <option value="low">Niski</option>
+              <option value="medium">Średni</option>
+              <option value="high">Wysoki</option>
+            </select>
+            <select id="sort-notes" aria-label="Sortuj notatki">
+              <option value="createdAt-desc">Najnowsze</option>
+              <option value="createdAt-asc">Najstarsze</option>
+              <option value="title-asc">Tytuł A-Z</option>
+              <option value="title-desc">Tytuł Z-A</option>
+              <option value="status-asc">Status A-Z</option>
+              <option value="status-desc">Status Z-A</option>
+            </select>
+          </div>
+          <ul class="note-list" id="note-list" aria-live="polite"></ul>
+        </section>
+      </div>
+      </aside>
+    </main>
+
+    <div id="clients-scrim" class="panel-scrim panel-scrim--clients" hidden></div>
+    <section id="clients-panel" class="clients-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="clients-title" tabindex="-1">
+      <div class="clients-header">
+        <div class="clients-title-group">
+          <h2 id="clients-title">Klienci &amp; współpraca</h2>
+          <p id="clients-description">Monitoruj relacje partnerskie, dodawaj nowych klientów i zarządzaj priorytetami współpracy.</p>
+        </div>
+        <button type="button" class="panel-close" data-action="close-clients" aria-label="Zamknij panel klientów">×</button>
+      </div>
+      <form id="client-form" class="client-form" aria-describedby="clients-description" autocomplete="off">
+        <div class="form-field">
+          <label for="client-name">Nazwa klienta *</label>
+          <input id="client-name" name="name" type="text" required aria-required="true" />
+        </div>
+        <div class="form-field">
+          <label for="client-industry">Branża</label>
+          <input id="client-industry" name="industry" type="text" />
+        </div>
+        <div class="form-field">
+          <label for="client-owner">Opiekun</label>
+          <input id="client-owner" name="owner" type="text" />
+        </div>
+        <div class="form-field">
+          <label for="client-email">Kontakt</label>
+          <input id="client-email" name="contact" type="email" placeholder="email@firma.pl" />
+        </div>
+        <div class="form-field">
+          <label for="client-status">Status</label>
+          <select id="client-status" name="status">
+            <option value="active">Aktywny</option>
+            <option value="prospect">Prospekt</option>
+            <option value="on-hold">Wstrzymany</option>
+          </select>
+        </div>
+        <div class="form-field form-field--wide">
+          <label for="client-notes">Notatki</label>
+          <textarea id="client-notes" name="notes" rows="3" placeholder="Najważniejsze ustalenia lub następne kroki"></textarea>
+        </div>
+        <div class="form-actions form-actions--client">
+          <button type="submit" class="btn btn-primary">Dodaj klienta</button>
+          <button type="reset" class="btn btn-secondary">Wyczyść</button>
+        </div>
+      </form>
+      <div class="clients-table-wrapper" role="region" aria-live="polite" aria-labelledby="clients-title">
+        <table class="clients-table">
+          <thead>
+            <tr>
+              <th scope="col">Klient</th>
+              <th scope="col">Branża</th>
+              <th scope="col">Opiekun</th>
+              <th scope="col">Kontakt</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="col-actions">Akcje</th>
+            </tr>
+          </thead>
+          <tbody id="clients-list"></tbody>
+        </table>
+        <p id="clients-empty" class="clients-empty" role="status">Brak klientów na liście. Dodaj pierwszą relację, by rozpocząć.</p>
+      </div>
+    </section>
+
+    <div id="products-scrim" class="panel-scrim panel-scrim--products" hidden></div>
+    <section id="products-panel" class="products-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="products-title" tabindex="-1">
+      <div class="products-header">
+        <div class="products-title-group">
+          <h2 id="products-title">Katalog produktów</h2>
+          <p id="products-description">Buduj aktualną listę rozwiązań Metcor z krótkim opisem i odnośnikiem wsparcia.</p>
+        </div>
+        <button type="button" class="panel-close" data-action="close-products" aria-label="Zamknij katalog produktów">×</button>
+      </div>
+      <form id="product-form" class="product-form" aria-describedby="products-description" autocomplete="off">
+        <div class="form-field">
+          <label for="product-name">Nazwa produktu *</label>
+          <input id="product-name" name="name" type="text" required aria-required="true" />
+        </div>
+        <div class="form-field form-field--wide">
+          <label for="product-description">Krótki opis</label>
+          <textarea id="product-description" name="description" rows="3" placeholder="Podsumowanie wartości lub głównych funkcji"></textarea>
+        </div>
+        <div class="form-field">
+          <label for="product-link">Link wsparcia</label>
+          <input id="product-link" name="link" type="url" placeholder="https://metcor.pl/produkt" />
+        </div>
+        <div class="form-field">
+          <label for="product-image">Zdjęcie produktu</label>
+          <input id="product-image" name="image" type="file" accept="image/*" aria-describedby="product-image-hint" />
+          <p class="field-hint" id="product-image-hint">Najlepiej sprawdzają się kwadratowe grafiki do 5&nbsp;MB.</p>
+        </div>
+        <div class="form-actions form-actions--product">
+          <button type="submit" class="btn btn-primary">Dodaj produkt</button>
+          <button type="reset" class="btn btn-secondary">Wyczyść</button>
+        </div>
+      </form>
+      <div class="products-list-wrapper" role="region" aria-live="polite" aria-labelledby="products-title">
+        <ul id="products-list" class="products-list"></ul>
+        <p id="products-empty" class="products-empty" role="status">Brak produktów w katalogu. Dodaj pozycję, aby rozpocząć.</p>
+      </div>
+    </section>
+
+    <div id="ai-scrim" class="panel-scrim panel-scrim--ai" hidden></div>
+    <section id="ai-panel" class="ai-panel" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="ai-title" tabindex="-1">
+      <div class="ai-header">
+        <div class="ai-title-group">
+          <h2 id="ai-title">AI Marketing Command</h2>
+          <p id="ai-description">Zarządzaj botami wspierającymi działania marketingowe Metcor i monitoruj ich aktywność.</p>
+        </div>
+        <button type="button" class="panel-close" data-action="close-ai" aria-label="Zamknij panel AI">×</button>
+      </div>
+      <div class="ai-content" aria-describedby="ai-description">
+        <section class="ai-metrics" aria-label="Metryki botów AI">
+          <dl class="ai-metric" aria-label="Aktywne boty">
+            <dt>Aktywne boty</dt>
+            <dd id="ai-metric-active">0</dd>
+          </dl>
+          <dl class="ai-metric" aria-label="Boty w szkoleniu">
+            <dt>W szkoleniu</dt>
+            <dd id="ai-metric-training">0</dd>
+          </dl>
+          <dl class="ai-metric" aria-label="Boty oczekujące">
+            <dt>W kolejce</dt>
+            <dd id="ai-metric-queued">0</dd>
+          </dl>
+        </section>
+        <div class="ai-layout">
+          <form id="ai-form" class="ai-form" autocomplete="off">
+            <div class="form-field">
+              <label for="ai-name">Nazwa bota *</label>
+              <input id="ai-name" name="name" type="text" required aria-required="true" />
+            </div>
+            <div class="form-field">
+              <label for="ai-channel">Kanał docelowy</label>
+              <input id="ai-channel" name="channel" type="text" placeholder="np. LinkedIn, Web, Email" />
+            </div>
+            <div class="form-field">
+              <label for="ai-cadence">Częstotliwość</label>
+              <input id="ai-cadence" name="cadence" type="text" placeholder="np. codziennie, 2× tydzień" />
+            </div>
+            <div class="form-field">
+              <label for="ai-status">Status</label>
+              <select id="ai-status" name="status">
+                <option value="active">Aktywny</option>
+                <option value="training">Szkolenie</option>
+                <option value="paused">Wstrzymany</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="ai-goal">Cel operacyjny</label>
+              <textarea id="ai-goal" name="goal" rows="3" placeholder="Opis zadania lub KPI dla bota"></textarea>
+            </div>
+            <div class="form-field">
+              <label for="ai-notes">Notatki</label>
+              <textarea id="ai-notes" name="notes" rows="2" placeholder="Konfiguracja, zasoby, uwagi"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Dodaj bota</button>
+              <button type="reset" class="btn btn-secondary">Wyczyść</button>
+            </div>
+          </form>
+          <div class="ai-list-wrapper" role="region" aria-live="polite" aria-labelledby="ai-title">
+            <ul id="ai-list" class="ai-list"></ul>
+            <p id="ai-empty" class="ai-empty" role="status">Brak botów na liście. Dodaj pierwszego operatora, by rozpocząć.</p>
+          </div>
+        </div>
+      </div>
+      <div class="ai-floating-actions">
+        <button type="button" class="btn btn-primary btn-floating" data-action="ai-focus-form">Dodaj bota</button>
+        <button type="button" class="btn btn-secondary btn-floating" data-action="ai-manage">Zarządzaj</button>
+      </div>
+    </section>
+
+    <div class="modal" id="unsaved-modal" role="dialog" aria-modal="true" aria-labelledby="unsaved-title" hidden>
+      <div class="modal-content">
+        <h2 id="unsaved-title">Masz niezapisane zmiany</h2>
+        <p>Czy na pewno chcesz zamknąć panel? Niezapisane dane zostaną utracone.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-primary" data-action="confirm-close">Tak, zamknij</button>
+          <button type="button" class="btn btn-secondary" data-action="cancel-close">Nie</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <footer class="app-footer" role="contentinfo">
+      <p>© Metcor, 2025–2026</p>
+    </footer>
+  </div>
+
+  <input type="file" id="file-input" class="sr-only" multiple />
+
+  <script src="js/db.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
